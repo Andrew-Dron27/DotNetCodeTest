@@ -6,6 +6,10 @@
 
 <MudDialog>
 	<DialogContent>
+		@if(error)
+		{
+			<MudText Typo="Typo.overline" Color="Color.Warning">@errorText</MudText>
+		}
 		<MudForm @ref="_form" Model="Price" Validation="Validator.FormValidate()">
 			<MudNumericField Label="Product ID" Required="true"
 			                 @bind-Value="Price.ProductId" For="@(() => Price.ProductId)"/>
@@ -40,7 +44,7 @@
 		get => Price.FromDate?.ToDateTime(TimeOnly.MinValue);
 		set => Price.FromDate = value is not null ? DateOnly.FromDateTime(value.Value) : null;
 	}
-	
+
 	private DateTime? ToDateTime
 	{
 		get => Price.ToDate?.ToDateTime(TimeOnly.MinValue);
@@ -49,12 +53,32 @@
 
 	void CancelClicked() => Dialog.Close();
 
+	bool error;
+
+	string errorText = "";
+
 	async Task SaveClicked()
 	{
 		await _form.Validate();
 
 		if (_form.IsValid)
 		{
+			var prices = await PriceService.GetAllPrices();
+			foreach(var price in prices)
+			{
+				if(price.ProductId == Price.ProductId && price.PriceType == Price.PriceType)
+				{
+					error = true;
+					errorText = "Price of type " + Price.PriceTypeName.ToString() + " already exists for productId " + Price.ProductId.ToString();
+					StateHasChanged();
+					return;
+				}
+				else
+				{
+					error = false;
+					//StateHasChanged();
+				}
+			}
 			if (Price.Id != default)
 			{
 				Price = await PriceService.UpdatePrice(Price);
